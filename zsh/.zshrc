@@ -8,6 +8,7 @@ HISTFILE=~/.zsh_history
 plug "$HOME/.config/zsh/aliases.zsh"
 plug "$HOME/.config/zsh/exports.zsh"
 plug "$HOME/.config/zsh/plugins/prompt.zsh-theme"
+plug "$HOME/.config/zsh/plugins/git.plugin.zsh"
 
 # plugins
 plug "esc/conda-zsh-completion"
