@@ -1,3 +1,5 @@
+<img src="./terminal.jpeg" alt="terminal screenshot" />
+
 # Dotfiles
 
 ## Installing
