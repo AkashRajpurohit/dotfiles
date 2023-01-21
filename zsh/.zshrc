@@ -18,7 +18,7 @@ plug "zap-zsh/supercharge"
 plug "zap-zsh/vim"
 plug "zap-zsh/fzf"
 plug "zap-zsh/exa"
-# plug "zap-zsh/zap-prompt"
+#plug "zettlrobert/simple-prompt"
 # plug "zsh-users/zsh-syntax-highlighting"
 
 # keybinds
