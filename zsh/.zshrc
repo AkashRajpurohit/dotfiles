@@ -24,8 +24,3 @@ plug "zap-zsh/exa"
 bindkey '^ ' autosuggest-accept
 
 export PATH="$HOME/.local/bin:$HOME/.local/share/fnm":$PATH
-
-if command -v bat &> /dev/null; then
-  alias cat="bat -pp --theme \"Visual Studio Dark+\"" 
-  alias catt="bat --theme \"Visual Studio Dark+\"" 
-fi

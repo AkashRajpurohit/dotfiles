@@ -39,6 +39,11 @@ alias gpg-check="gpg2 --keyserver-options auto-key-retrieve --verify"
 # receive the key of a developer
 alias gpg-retrieve="gpg2 --keyserver-options auto-key-retrieve --receive-keys"
 
+# Replace cat with bat
+if command -v bat &> /dev/null; then
+  alias cat="bat"
+fi
+
 # systemd
 alias mach_list_systemctl="systemctl list-unit-files --state=enabled"
 
