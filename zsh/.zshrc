@@ -7,7 +7,7 @@ HISTFILE=~/.zsh_history
 # source
 plug "$HOME/.config/zsh/aliases.zsh"
 plug "$HOME/.config/zsh/exports.zsh"
-#plug "$HOME/.config/zsh/plugins/prompt.zsh-theme"
+plug "$HOME/.config/zsh/plugins/prompt.zsh-theme"
 plug "$HOME/.config/zsh/plugins/git.plugin.zsh"
 
 # plugins
@@ -18,10 +18,9 @@ plug "zap-zsh/supercharge"
 plug "zap-zsh/vim"
 plug "zap-zsh/fzf"
 plug "zap-zsh/exa"
-plug "MAHcodes/distro-prompt"
-# plug "zsh-users/zsh-syntax-highlighting"
+plug "zsh-users/zsh-syntax-highlighting"
 
 # keybinds
 bindkey '^ ' autosuggest-accept
 
-export PATH="$HOME/.local/bin:$HOME/.local/share/fnm":$PATH
+export PATH="$HOME/.local/bin:":$PATH
