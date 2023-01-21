@@ -14,9 +14,9 @@ export GOPATH=$HOME/.local/share/go
 export PATH=$HOME/.fnm:$PATH
 export PATH="$HOME/.local/share/neovim/bin":$PATH
 export XDG_CURRENT_DESKTOP="Wayland"
-# eval "$(fnm env)"
 eval "$(zoxide init zsh)"
 
+export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :50 {}'"
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
