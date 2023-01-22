@@ -22,3 +22,17 @@ require("nvim-tree").setup({
     dotfiles = true,
   },
 })
+
+vim.api.nvim_set_keymap(
+  "n",
+  "<space>fo",
+  ":NvimTreeOpen",
+  { noremap = true }
+)
+
+vim.api.nvim_set_keymap(
+  "n",
+  "<space>fc",
+  ":NvimTreeClose",
+  { noremap = true }
+)
