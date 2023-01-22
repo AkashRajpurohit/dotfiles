@@ -40,6 +40,13 @@ require('packer').startup(function(use)
     after = 'nvim-treesitter',
   }
 
+  use { -- File explorer
+    'nvim-tree/nvim-tree.lua',
+    requires = {
+      'nvim-tree/nvim-web-devicons', -- optional, for file icons
+    },
+  }
+
   -- Git related plugins
   use 'tpope/vim-fugitive'
   use 'tpope/vim-rhubarb'

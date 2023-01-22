@@ -60,3 +60,5 @@
 	process = git-lfs filter-process
 [ghq]
 	root = ~/.ghq
+[pull]
+	rebase = true
