@@ -33,7 +33,7 @@ stow zsh
 
 ### Neovim
 
-Install [neovim](https://github.com/neovim/neovim)
+Install [neovim](https://github.com/neovim/neovim) >= 0.8
 
 ```bash
 stow nvim
