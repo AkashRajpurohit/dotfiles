@@ -23,4 +23,5 @@ plug "zsh-users/zsh-syntax-highlighting"
 # keybinds
 bindkey '^ ' autosuggest-accept
 
-export PATH="$HOME/.local/bin:":$PATH
+export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:/usr/local/go/bin":$PATH
+export GOPATH="$HOME/go"
