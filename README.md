@@ -17,10 +17,11 @@
 
 You will need `git` and GNU [`stow`](https://github.com/aspiers/stow)
 
-Clone into your `$HOME` directory or `~`
+Clone into your `$HOME/dotfiles` directory or `~/dotfiles`
 
 ```bash
-git clone https://github.com/AkashRajpurohit/dotfiles.git ~
+git clone https://github.com/AkashRajpurohit/dotfiles.git ~/dotfiles
+cd ~/dotfiles
 ```
 
 ### Zsh
