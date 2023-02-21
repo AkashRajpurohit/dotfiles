@@ -9,7 +9,7 @@
   <a href="https://github.com/AkashRajpurohit/dotfiles/network/members"><img src="https://img.shields.io/github/forks/AkashRajpurohit/dotfiles" height="20"></a>
   <a href="https://github.com/AkashRajpurohit/dotfiles/issues?q=is%3Aopen+is%3Aissue"><img src="https://img.shields.io/github/issues/AkashRajpurohit/dotfiles" height="20"></a>
   <a href="https://github.com/AkashRajpurohit/dotfiles/blob/main/LICENSE"><img src="https://img.shields.io/github/license/AkashRajpurohit/dotfiles" height="20"></a>
-  <a href="https://twitter.com/intent/tweet?url=https%3A%2F%2Fgithub.com%2FAkashRajpurohit%2Fcryptfolio"><img src="https://img.shields.io/twitter/url?url=https%3A%2F%2Fgithub.com%2FAkashRajpurohit%2Fdotfiles" height="20"></a>
+  <a href="https://twitter.com/intent/tweet?url=https%3A%2F%2Fgithub.com%2FAkashRajpurohit%2Fdotfiles"><img src="https://img.shields.io/twitter/url?url=https%3A%2F%2Fgithub.com%2FAkashRajpurohit%2Fdotfiles" height="20"></a>
   </p>
 </h1>
 
