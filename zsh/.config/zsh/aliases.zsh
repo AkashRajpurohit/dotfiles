@@ -49,7 +49,7 @@ if command -v bat &> /dev/null; then
 fi
 
 # systemd
-alias mach_list_systemctl="systemctl list-unit-files --state=enabled"
+alias running_services="systemctl list-units --type=service --state=running"
 
 case "$(uname -s)" in
 
