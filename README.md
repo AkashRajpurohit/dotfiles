@@ -15,8 +15,6 @@
 
 ## Installing
 
-You will need `git` and GNU [`stow`](https://github.com/aspiers/stow)
-
 Clone into your `$HOME/dotfiles` directory or `~/dotfiles`
 
 ```bash
@@ -24,17 +22,17 @@ git clone https://github.com/AkashRajpurohit/dotfiles.git ~/dotfiles
 cd ~/dotfiles
 ```
 
-### Zsh
+Once you have the repo cloned, go to `scripts` folder and according to your platform, give executable permission to the install script. For example for linux do `chmod +x install-linux.sh` and for macos do `chmod +x install-mac.sh`.
 
-Install [zap](https://github.com/zap-zsh/zap) for managing plugins for zsh
+Post that run the script with `sudo` command to install the required packages.
+
+### Zsh
 
 ```bash
 stow zsh
 ```
 
 ### Neovim
-
-Install [neovim](https://github.com/neovim/neovim) >= 0.8
 
 ```bash
 stow nvim
