@@ -6,10 +6,6 @@ alias zsh-update-plugins="find "$ZDOTDIR/plugins" -type d -exec test -e '{}/.git
 alias nvimrc='nvim ~/.config/nvim/'
 alias yay="paru"
 
-# Changing vi and vim to nvim
-alias vi="vim"
-alias vim="nvim"
-
 # Changing "ls" to "exa"
 alias ls='exa -al --color=always --group-directories-first' # my preferred listing
 alias la='exa -a --color=always --group-directories-first'  # all files and dirs
@@ -46,6 +42,12 @@ alias gpg-retrieve="gpg2 --keyserver-options auto-key-retrieve --receive-keys"
 # Replace cat with bat
 if command -v bat &> /dev/null; then
   alias cat="bat"
+fi
+
+# Replace vim and vi with nvim if exists
+if command -v nvim &> /dev/null; then
+  alias vi="vim"
+  alias vim="nvim"
 fi
 
 # systemd
