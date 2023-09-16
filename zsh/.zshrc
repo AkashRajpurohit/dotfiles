@@ -22,7 +22,3 @@ plug "zsh-users/zsh-syntax-highlighting"
 
 # keybinds
 bindkey '^ ' autosuggest-accept
-
-export GOROOT=/usr/local/go
-export GOPATH=$HOME/go
-export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$HOME/usr/local/go/bin":$PATH

@@ -5,22 +5,20 @@ SAVEHIST=1000000
 export EDITOR="nvim"
 export TERMINAL="kitty"
 export BROWSER="brave"
-export PATH="$HOME/.local/bin":$PATH
 export MANPAGER='nvim +Man!'
 export MANWIDTH=999
+export GOPATH=$HOME/.local/share/go
+export PATH=$HOME/.local/bin:$PATH
 export PATH=$HOME/.cargo/bin:$PATH
 export PATH=$HOME/.local/share/go/bin:$PATH
-export GOPATH=$HOME/.local/share/go
 export PATH=$HOME/.fnm:$PATH
-export PATH="$HOME/.local/share/neovim/bin":$PATH
+export PATH=$HOME/.local/share/neovim/bin:$PATH
 export XDG_CURRENT_DESKTOP="Wayland"
 
-export PATH="/home/akash/.local/share/fnm:$PATH"
 eval "$(fnm env --use-on-cd)"
-
 eval "$(zoxide init zsh)"
 
-export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :50 {}'"
+export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :500 {}'"
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
