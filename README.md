@@ -18,13 +18,24 @@
 Clone into your `$HOME/dotfiles` directory or `~/dotfiles`
 
 ```bash
-git clone https://github.com/AkashRajpurohit/dotfiles.git ~/dotfiles
-cd ~/dotfiles
+git clone https://github.com/AkashRajpurohit/dotfiles.git ~/dotfiles && cd ~/dotfiles
 ```
 
-Once you have the repo cloned, go to `scripts` folder and according to your platform, give executable permission to the install script. For example for linux do `chmod +x install-linux.sh` and for macos do `chmod +x install-mac.sh`.
+Install the packages based on the system
 
-Post that run the script with `sudo` command to install the required packages.
+For Linux:
+
+```bash
+chmod +x ./scripts/install-linux.sh && sudo ./scripts/install-linux.sh
+```
+
+For Mac:
+
+```bash
+chmod +x ./scripts/install-mac.sh && sudo ./scripts/install-mac.sh
+```
+
+## Synching Configurations
 
 ### Zsh
 
@@ -36,6 +47,12 @@ stow zsh
 
 ```bash
 stow nvim
+```
+
+### Git
+
+```bash
+stow git
 ```
 
 ## Credits
