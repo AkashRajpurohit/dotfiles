@@ -12,7 +12,6 @@ plug "$HOME/.config/zsh/plugins/prompt.zsh-theme"
 plug "$HOME/.config/zsh/plugins/git.plugin.zsh"
 
 # plugins
-plug "esc/conda-zsh-completion"
 plug "zsh-users/zsh-autosuggestions"
 plug "hlissner/zsh-autopair"
 plug "zap-zsh/supercharge"

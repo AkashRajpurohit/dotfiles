@@ -5,7 +5,7 @@ SAVEHIST=1000000
 export EDITOR="nvim"
 export TERMINAL="kitty"
 export BROWSER="brave"
-export MANPAGER='nvim +Man!'
+export MANPAGER='vim +Man!'
 export MANWIDTH=999
 export GOPATH=$HOME/.local/share/go
 export BUN_INSTALL=$HOME/.bun
@@ -21,18 +21,3 @@ export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :500 {}'"
 
 eval "$(fnm env --use-on-cd)"
 eval "$(zoxide init zsh)"
-
-# >>> conda initialize >>>
-# !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$("$HOME/.miniconda/bin/conda" 'shell.zsh' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-	eval "$__conda_setup"
-else
-	if [ -f "$HOME/.miniconda/etc/profile.d/conda.sh" ]; then
-		. "$HOME/.miniconda/etc/profile.d/conda.sh"
-	else
-		export PATH="$HOME/.miniconda/bin:$PATH"
-	fi
-fi
-unset __conda_setup
-# <<< conda initialize <<<
