@@ -39,6 +39,9 @@ alias gpg-check="gpg2 --keyserver-options auto-key-retrieve --verify"
 # receive the key of a developer
 alias gpg-retrieve="gpg2 --keyserver-options auto-key-retrieve --receive-keys"
 
+# systemd
+alias running_services="systemctl list-units --type=service --state=running"
+
 # Replace cat with bat
 if command -v bat &> /dev/null; then
   alias cat="bat"
@@ -50,24 +53,3 @@ if command -v nvim &> /dev/null; then
   alias vim="nvim"
 fi
 
-# systemd
-alias running_services="systemctl list-units --type=service --state=running"
-
-case "$(uname -s)" in
-
-Darwin)
-	# echo 'Mac OS X'
-	alias ls='ls -G'
-	;;
-
-Linux)
-	alias ls='ls --color=auto'
-	;;
-
-CYGWIN* | MINGW32* | MSYS* | MINGW*)
-	# echo 'MS Windows'
-	;;
-*)
-	# echo 'Other OS'
-	;;
-esac
