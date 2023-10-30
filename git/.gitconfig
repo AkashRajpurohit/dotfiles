@@ -67,7 +67,3 @@
 	program = gpg2
 [commit]
 	gpgSign = true
-[tag]
-	gpgSign = true
-[push]
-	gpgSign = true
