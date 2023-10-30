@@ -43,6 +43,7 @@
 [user]
 	name = AkashRajpurohit
 	email = akashrajpurohit.009@gmail.com
+	signingkey = D8F02488B845B00E
 [init]
 	defaultBranch = main
 [diff]
@@ -62,3 +63,11 @@
 	root = ~/.ghq
 [pull]
 	rebase = true
+[gpg]
+	program = gpg2
+[commit]
+	gpgSign = true
+[tag]
+	gpgSign = true
+[push]
+	gpgSign = true

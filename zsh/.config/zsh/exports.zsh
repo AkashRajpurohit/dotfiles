@@ -2,6 +2,7 @@
 # HISTFILE="$XDG_DATA_HOME"/zsh/history
 HISTSIZE=1000000
 SAVEHIST=1000000
+export GPG_TTY=$(tty)
 export EDITOR="vim"
 export TERMINAL="kitty"
 export BROWSER="brave"
