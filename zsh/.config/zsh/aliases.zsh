@@ -19,7 +19,7 @@ alias egrep='egrep --color=auto'
 alias fgrep='fgrep --color=auto'
 
 # confirm before overwriting something
-alias cp="cp -i"
+alias cp='cp -i'
 alias mv='mv -i'
 alias rm='rm -i'
 
@@ -34,22 +34,23 @@ alias psmem='ps auxf | sort -nr -k 4 | head -5'
 alias pscpu='ps auxf | sort -nr -k 3 | head -5'
 
 # gpg encryption
+alias gpg='gpg2'
 # verify signature for isos
-alias gpg-check="gpg2 --keyserver-options auto-key-retrieve --verify"
+alias gpg-check='gpg2 --keyserver-options auto-key-retrieve --verify'
 # receive the key of a developer
-alias gpg-retrieve="gpg2 --keyserver-options auto-key-retrieve --receive-keys"
+alias gpg-retrieve='gpg2 --keyserver-options auto-key-retrieve --receive-keys'
 
 # systemd
-alias running_services="systemctl list-units --type=service --state=running"
+alias running_services='systemctl list-units --type=service --state=running'
 
 # Replace cat with bat
 if command -v bat &> /dev/null; then
-  alias cat="bat"
+  alias cat='bat'
 fi
 
 # Replace vim and vi with nvim if exists
 if command -v nvim &> /dev/null; then
-  alias vi="vim"
-  alias vim="nvim"
+  alias vi='vim'
+  alias vim='nvim'
 fi
 
