@@ -40,7 +40,7 @@ chmod +x ./install-mac.sh && sudo ./install-mac.sh
 To sync all configurations use:
 
 ```bash
-stow /*
+stow */
 ```
 
 To sync specific folders, specify the given folder:
