@@ -26,33 +26,28 @@ Install the packages based on the system
 For Linux:
 
 ```bash
-chmod +x ./scripts/install-linux.sh && sudo ./scripts/install-linux.sh
+chmod +x ./install-linux.sh && sudo ./install-linux.sh
 ```
 
 For Mac:
 
 ```bash
-chmod +x ./scripts/install-mac.sh && sudo ./scripts/install-mac.sh
+chmod +x ./install-mac.sh && sudo ./install-mac.sh
 ```
 
 ## Synching Configurations
 
-### Zsh
+To sync all configurations use:
 
 ```bash
-stow zsh
+stow /*
 ```
 
-### Neovim
+To sync specific folders, specify the given folder:
 
 ```bash
-stow nvim
-```
-
-### Git
-
-```bash
-stow git
+stow zsh # for zsh config
+stow nvm # for nvim config
 ```
 
 ## Credits
