@@ -7,6 +7,7 @@ log_message() {
     echo "$separator"
     echo "$message"
     echo "$separator"
+    echo "\n\n"
 }
 
 # Function to check if a package is installed
@@ -48,14 +49,13 @@ fi
 
 # List of packages to install with descriptions and special install methods if needed
 PACKAGES=(
+    "zsh:Zsh Shell"
     "git:Git Version Control"
     "stow:GNU Stow - Symlink Farm Manager"
     "neovim:Neovim Text Editor"
     "bat:Bat - A Cat Clone with Syntax Highlighting"
     "exa:Exa - A Modern Replacement for ls"
     "fzf:Fuzzy Finder for Terminal"
-    "zsh:Zsh Shell"
-    "zoxide:Zoxide - A smarter cd command"
 )
 
 # Install packages using the detected package manager
@@ -88,25 +88,32 @@ for package_info in "${PACKAGES[@]}"; do
     fi
 done
 
-# Install Node.js via NVM and use LTS version
-if ! is_package_installed "nvm"; then
-    log_message "🟡 Installing NVM (Node Version Manager)..."
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
-    source ~/.nvm/nvm.sh
+# Install fnm for managing node versions
+if ! is_package_installed "fnm"; then
+    log_message "🟡 Installing fnm..."
+    curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell
+    source ~/.zshrc
+fi
+
+# Install zoxide
+if ! is_package_installed "zoxide"; then
+    log_message "🟡 Installing zoxide..."
+    curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash
+    source ~/.zshrc
 fi
 
 # Install zap for managing zsh packages
-if ! is_package_installed "zap"; then
+if [! is_package_installed "zap"] && [ "$SHELL" == "/usr/bin/zsh" ]; then
     log_message "🟡 Installing Zap..."
     zsh <(curl -s https://raw.githubusercontent.com/zap-zsh/zap/master/install.zsh) --branch release-v1
     source ~/.zshrc
 fi
 
-# Create an alias for the bat package
-if is_package_installed "batcat"; then
-    mkdir -p ~/.local/bin
-    ln -s "$(command -v batcat)" ~/.local/bin/bat
-    log_message "✅ Alias for 'bat' created in ~/.local/bin."
-fi
-
 log_message "🟢 All packages installed successfully."
+
+log_message "🟢 Changing shell to ZSH"
+
+chsh -s $(which zsh)
+
+log_message "🟢 Logout and login back and re-run the script once again to verify"
+
