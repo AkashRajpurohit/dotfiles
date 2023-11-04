@@ -49,9 +49,11 @@ fi
 
 # List of packages to install with descriptions and special install methods if needed
 PACKAGES=(
-    "zsh:Zsh Shell"
     "git:Git Version Control"
+    "curl:cURL"
+    "unzip:Unzip"
     "stow:GNU Stow - Symlink Farm Manager"
+    "zsh:Zsh Shell"
     "neovim:Neovim Text Editor"
     "bat:Bat - A Cat Clone with Syntax Highlighting"
     "exa:Exa - A Modern Replacement for ls"
@@ -103,9 +105,9 @@ if ! is_package_installed "zoxide"; then
 fi
 
 # Install zap for managing zsh packages
-if [! is_package_installed "zap"] && [ "$SHELL" == "/usr/bin/zsh" ]; then
+if ! is_package_installed "zap"; then
     log_message "🟡 Installing Zap..."
-    zsh <(curl -s https://raw.githubusercontent.com/zap-zsh/zap/master/install.zsh) --branch release-v1
+    zsh <(curl -s https://raw.githubusercontent.com/zap-zsh/zap/master/install.zsh) --branch release-v1 --keep
     source ~/.zshrc
 fi
 
