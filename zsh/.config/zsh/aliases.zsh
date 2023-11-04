@@ -84,12 +84,12 @@ alias enable_now_service="manage_service enable --now"
 
 alias running_services='systemctl list-units --type=service --state=running'
 
-# Replace cat with bat
-if command -v bat &> /dev/null; then
-  alias cat='bat'
+# Replace batcat to bat if it is installed
+if command -v batcat &> /dev/null; then
+  alias bat='batcat'
 fi
 
-# Replace vim and vi with nvim if exists
+# Replace vim and vi with nvim if it is installed
 if command -v nvim &> /dev/null; then
   alias vi='vim'
   alias vim='nvim'
