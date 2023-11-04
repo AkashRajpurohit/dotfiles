@@ -4,7 +4,13 @@ alias f='zi'
 alias zsh-update-plugins="find "$ZDOTDIR/plugins" -type d -exec test -e '{}/.git' ';' -print0 | xargs -I {} -0 git -C {} pull -q"
 alias nvimrc='nvim ~/.config/nvim/'
 alias mkcd='mkdir -p && cd' # make directory and cd into it
-alias fuck='sudo !!' # run the previous command with sudo
+
+# Function to re-run the previous command with sudo
+sudorun() {
+  sudo $(fc -ln -1)
+}
+
+alias fuck="sudorun"
 
 # Changing "ls" to "exa"
 alias ls='exa -al --color=always --group-directories-first' # my preferred listing
