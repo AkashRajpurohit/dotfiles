@@ -7,7 +7,7 @@ log_message() {
     echo "$separator"
     echo "$message"
     echo "$separator"
-    echo "\n\n"
+    echo ""
 }
 
 # Function to check if a package is installed
@@ -94,21 +94,18 @@ done
 if ! is_package_installed "fnm"; then
     log_message "🟡 Installing fnm..."
     curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell
-    source ~/.zshrc
 fi
 
 # Install zoxide
 if ! is_package_installed "zoxide"; then
     log_message "🟡 Installing zoxide..."
     curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash
-    source ~/.zshrc
 fi
 
 # Install zap for managing zsh packages
 if ! is_package_installed "zap"; then
     log_message "🟡 Installing Zap..."
     zsh <(curl -s https://raw.githubusercontent.com/zap-zsh/zap/master/install.zsh) --branch release-v1 --keep
-    source ~/.zshrc
 fi
 
 log_message "🟢 All packages installed successfully."
