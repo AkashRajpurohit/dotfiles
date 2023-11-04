@@ -32,7 +32,7 @@ alias rm='rm -i'
 # easier to read disk
 alias df='df -h'     # human-readable sizes
 alias free='free -m' # show sizes in MB
-alias duf='du -h d1' # show file sizes in a folder for depth=1
+alias duf='du -h -d1' # show file sizes in a folder for depth=1
 
 # get top process eating memory
 alias psmem='ps auxf | sort -nr -k 4 | head -5'
