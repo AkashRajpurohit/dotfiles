@@ -1,23 +1,22 @@
 #!/bin/sh
-alias j='z'
-alias f='zi'
-alias zsh-update-plugins="find "$ZDOTDIR/plugins" -type d -exec test -e '{}/.git' ';' -print0 | xargs -I {} -0 git -C {} pull -q"
-alias nvimrc='nvim ~/.config/nvim/'
-alias mkcd='mkdir -p && cd' # make directory and cd into it
 
-# Function to re-run the previous command with sudo
-sudorun() {
-  sudo $(fc -ln -1)
+command_exists () {
+  hash "$1" 2> /dev/null
 }
 
-alias fuck="sudorun"
-
 # Changing "ls" to "exa"
-alias ls='exa -al --color=always --group-directories-first' # my preferred listing
-alias la='exa -a --color=always --group-directories-first'  # all files and dirs
-alias ll='exa -l --color=always --group-directories-first'  # long format
-alias lt='exa -aT --color=always --group-directories-first' # tree listing
-alias l.='exa -a | egrep "^\."'
+if command_exists exa; then
+  alias ls='exa -al --color=always --group-directories-first' # my preferred listing
+  alias la='exa -a --color=always --group-directories-first'  # all files and dirs
+  alias ll='exa -l --color=always --group-directories-first'  # long format
+  alias lt='exa -aT --color=always --group-directories-first' # tree listing
+  alias l.='exa -a | egrep "^\."'
+else
+  alias la='ls -A' # List all files/ includes hidden
+  alias ll='ls -lAFh' # List all files, with full details
+  alias lb='ls -lhSA' # List all files sorted by biggest
+  alias lm='ls -tA -1' # List files sorted by last modified
+fi
 
 # Colorize grep output (good for log files)
 alias grep='grep --color=auto'
@@ -32,13 +31,30 @@ alias rm='rm -i'
 # easier to read disk
 alias df='df -h'     # human-readable sizes
 alias free='free -m' # show sizes in MB
-alias duf='du -h -d1' # show file sizes in a folder for depth=1
+alias dud='du -d 1 -h' # List sizes of files within directory
+alias duf='du -sh *' # List total size of current directory
 
-# get top process eating memory
-alias psmem='ps auxf | sort -nr -k 4 | head -5'
+# System Monitoring
+alias memhog='ps -eo pid,ppid,cmd,%mem --sort=-%mem | head' # Processes consuming most mem
+alias cpuhog='ps -eo pid,ppid,cmd,%cpu --sort=-%cpu | head' # Processes consuming most cpu
+alias cpuinfo='lscpu' # Show CPU Info
+alias distro='cat /etc/*-release' # Show OS info
+alias ports='netstat -tulanp' # Show open ports
 
-# get top process eating cpu ##
-alias pscpu='ps auxf | sort -nr -k 3 | head -5'
+# Copy / pasting
+alias cpwd='pwd | pbcopy' # Copy current path
+alias pa='pbpaste' # Paste clipboard contents
+
+# External Services
+alias myip='curl icanhazip.com'
+alias weather='curl wttr.in'
+alias weather-short='curl "wttr.in?format=3"'
+alias cheat='curl cheat.sh/'
+alias worldinternet='curl https://status.plaintext.sh/t'
+
+# Random
+alias plz="fc -l -1 | cut -d' ' -f2- | xargs sudo" # Re-run last cmd as root
+alias yolo='git add .; git commit -m "feat: :man_dancing: YOLO"; git push'
 
 # gpg encryption
 alias gpg='gpg2'
