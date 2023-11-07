@@ -63,6 +63,8 @@
 	root = ~/.ghq
 [pull]
 	rebase = true
+[push]
+	autoSetupRemote = true
 [gpg]
 	program = gpg2
 [commit]
