@@ -53,8 +53,11 @@ alias cheat='curl cheat.sh/'
 alias worldinternet='curl https://status.plaintext.sh/t'
 
 # Random
-alias plz="fc -l -1 | cut -d' ' -f2- | xargs sudo" # Re-run last cmd as root
 alias yolo='git add .; git commit -m "feat: :man_dancing: YOLO"; git push'
+sudorun() {
+  sudo $(fc -ln -1)
+}
+alias plz=sudorun
 
 # gpg encryption
 alias gpg='gpg2'
