@@ -71,12 +71,13 @@ packer.startup(function(use)
     },
   }
 
+  use { "catppuccin/nvim", as = "catppuccin" }
+
   -- Git related plugins
   use 'tpope/vim-fugitive'
   use 'tpope/vim-rhubarb'
   use 'lewis6991/gitsigns.nvim'
 
-  use 'folke/tokyonight.nvim' -- Tokyonight theme
   use 'nvim-lualine/lualine.nvim' -- Fancier statusline
   use 'lukas-reineke/indent-blankline.nvim' -- Add indentation guides even on blank lines
   use 'numToStr/Comment.nvim' -- "gc" to comment visual regions/lines
