@@ -72,6 +72,12 @@ manage_service() {
   local service="$2"
 
   case "$action" in
+    start)
+      sudo systemctl start "$service"
+      ;;
+    stop)
+      sudo systemctl stop "$service"
+      ;;
     restart)
       sudo systemctl restart "$service"
       ;;
@@ -95,11 +101,13 @@ manage_service() {
 }
 
 # Dynamic aliases for managing services
+alias start_service="manage_service start"
+alias stop_service="manage_service stop"
 alias restart_service="manage_service restart"
 alias status_service="manage_service status"
 alias enable_service="manage_service enable"
 alias disable_service="manage_service disable"
-alias enable_now_service="manage_service enable --now"
+alias enable_now_service="manage_service enable-now"
 
 alias running_services='systemctl list-units --type=service --state=running'
 
