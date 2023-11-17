@@ -54,6 +54,9 @@ alias worldinternet='curl https://status.plaintext.sh/t'
 
 # Random
 alias yolo='git add .; git commit -m "feat: :man_dancing: YOLO"; git push'
+bye() {
+  sudo shutdown -h now
+}
 sudorun() {
   sudo $(fc -ln -1)
 }
