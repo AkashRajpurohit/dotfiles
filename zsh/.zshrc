@@ -10,6 +10,7 @@ plug "$HOME/.config/zsh/aliases.zsh"
 plug "$HOME/.config/zsh/exports.zsh"
 plug "$HOME/.config/zsh/plugins/prompt.zsh-theme"
 plug "$HOME/.config/zsh/plugins/git.plugin.zsh"
+plug "$HOME/.config/zsh/plugins/asdf.plugin.zsh"
 
 # plugins
 plug "zsh-users/zsh-autosuggestions"
