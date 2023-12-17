@@ -49,8 +49,11 @@ alias pa='pbpaste' # Paste clipboard contents
 alias myip='curl icanhazip.com'
 alias weather='curl wttr.in'
 alias weather-short='curl "wttr.in?format=3"'
-alias cheat='curl cheat.sh/'
 alias worldinternet='curl https://status.plaintext.sh/t'
+cs() {
+  # Ask cheat.sh website for details about a Linux command.
+  curl -m 10 "http://cheat.sh/${1}" 2>/dev/null || printf '%s\n' "[ERROR] Something broke"
+}
 
 # Random
 alias yolo='git add .; git commit -m "feat: :man_dancing: YOLO"; git push'
