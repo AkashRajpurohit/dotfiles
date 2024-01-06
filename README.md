@@ -21,33 +21,12 @@ Clone into your `$HOME/dotfiles` directory or `~/dotfiles`
 git clone https://github.com/AkashRajpurohit/dotfiles.git ~/dotfiles && cd ~/dotfiles
 ```
 
-Install the packages based on the system
-
-For Linux:
-
-```bash
-chmod +x ./install-linux.sh && sudo ./install-linux.sh
-```
-
-For Mac:
-
-```bash
-chmod +x ./install-mac.sh && sudo ./install-mac.sh
-```
-
 ## Synching Configurations
 
 To sync all configurations use:
 
 ```bash
-stow */
-```
-
-To sync specific folders, specify the given folder:
-
-```bash
-stow zsh # for zsh config
-stow nvm # for nvim config
+stow zsh nvim git
 ```
 
 ## Credits
