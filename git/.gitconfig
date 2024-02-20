@@ -69,3 +69,5 @@
 	program = gpg2
 [commit]
 	gpgSign = true
+[includeIf "gitdir:~/dev/work/"]
+  path = ~/dev/work/.gitconfig
