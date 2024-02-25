@@ -116,7 +116,12 @@ alias enable_service="manage_service enable"
 alias disable_service="manage_service disable"
 alias enable_now_service="manage_service enable-now"
 
-alias running_services='systemctl list-units --type=service --state=running'
+alias running_services="systemctl list-units --type=service --state=running"
+log_service() {
+  local service="$1"
+
+  journalctl --unit $service.service --boot --pager-end
+}
 
 # Replace batcat to bat if it is installed
 if command_exists batcat; then
