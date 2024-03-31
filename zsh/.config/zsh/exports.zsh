@@ -4,7 +4,6 @@ HISTSIZE=1000000
 SAVEHIST=1000000
 export GPG_TTY=$(tty)
 export MANWIDTH=999
-export GOPATH=$HOME/.local/share/go
 export BUN_INSTALL=$HOME/.bun
 export PATH=$BUN_INSTALL/bin:$PATH
 export PATH=$HOME/.local/bin:$PATH
