@@ -26,8 +26,10 @@ git clone https://github.com/AkashRajpurohit/dotfiles.git ~/dotfiles && cd ~/dot
 To sync all configurations use:
 
 ```bash
-stow zsh nvim git
+stow zsh git
 ```
+
+For neovim, I have started using the [kickstart.nvim](https://github.com/AkashRajpurohit/kickstart.nvim). Follow the instructions in the README.md file of that repository to setup neovim config.
 
 ## Credits
 
