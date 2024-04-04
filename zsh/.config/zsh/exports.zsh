@@ -2,6 +2,7 @@
 # HISTFILE="$XDG_DATA_HOME"/zsh/history
 HISTSIZE=1000000
 SAVEHIST=1000000
+export EDITOR=vi
 export GPG_TTY=$(tty)
 export MANWIDTH=999
 export BUN_INSTALL=$HOME/.bun
