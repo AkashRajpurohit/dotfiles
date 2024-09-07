@@ -54,6 +54,9 @@ cs() {
   # Ask cheat.sh website for details about a Linux command.
   curl -m 10 "http://cheat.sh/${1}" 2>/dev/null || printf '%s\n' "[ERROR] Something broke"
 }
+mkcd() {
+    mkdir -p $@ && cd $@;
+}
 
 # Random
 alias yolo='git add .; git commit -m "feat: :man_dancing: YOLO"; git push'
