@@ -67,7 +67,10 @@ sudorun() {
   sudo $(fc -ln -1)
 }
 alias plz=sudorun
+
+# Docker related
 alias docker-compose-update='docker-compose pull; docker-compose down --remove-orphans; docker-compose rm; docker-compose up -d'
+alias dps='docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"'
 
 # gpg encryption
 alias gpg='gpg2'
