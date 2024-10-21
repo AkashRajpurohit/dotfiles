@@ -76,5 +76,5 @@
 	ui = auto
 [branch]
 	sort = -committerdate
-[includeIf "gitdir:~/dev/work/"]
-  path = ~/dev/work/.gitconfig
+[includeIf "gitdir:~/work/"]
+  path = ~/work/.gitconfig
