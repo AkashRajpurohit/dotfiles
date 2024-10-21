@@ -142,5 +142,6 @@ fi
 # Replace vim with nvim if it is installed
 if command_exists nvim; then
   alias vim='nvim'
+  alias vi='nvim'
 fi
 
