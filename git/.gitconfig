@@ -67,7 +67,7 @@
 [push]
 	autoSetupRemote = true
 [gpg]
-	program = gpg2
+	program = gpg
 [commit]
 	gpgSign = true
 [rerere]

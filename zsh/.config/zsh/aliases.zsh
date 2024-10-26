@@ -72,12 +72,15 @@ alias plz=sudorun
 alias docker-compose-update='docker-compose pull; docker-compose down --remove-orphans; docker-compose rm; docker-compose up -d'
 alias dps='docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"'
 
-# gpg encryption
-alias gpg='gpg2'
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  # gpg encryption
+  alias gpg='gpg2'
+fi
+
 # verify signature for isos
-alias gpg-check='gpg2 --keyserver-options auto-key-retrieve --verify'
+alias gpg-check='gpg --keyserver-options auto-key-retrieve --verify'
 # receive the key of a developer
-alias gpg-retrieve='gpg2 --keyserver-options auto-key-retrieve --receive-keys'
+alias gpg-retrieve='gpg --keyserver-options auto-key-retrieve --receive-keys'
 
 # systemd
 manage_service() {
