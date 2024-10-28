@@ -8,7 +8,7 @@ git_version="${${(As: :)$(git version 2>/dev/null)}[3]}"
 function git_main_branch() {
   command git rev-parse --git-dir &>/dev/null || return
   local ref
-  for ref in refs/{heads,remotes/{origin,upstream}}/{main,trunk,mainline,default}; do
+  for ref in refs/{heads,remotes/{origin,upstream}}/{master,main,trunk,mainline,default}; do
     if command git show-ref -q --verify $ref; then
       echo ${ref:t}
       return
@@ -21,7 +21,7 @@ function git_main_branch() {
 function git_develop_branch() {
   command git rev-parse --git-dir &>/dev/null || return
   local branch
-  for branch in dev devel development; do
+  for branch in dev devel develop development; do
     if command git show-ref -q --verify refs/heads/$branch; then
       echo $branch
       return
