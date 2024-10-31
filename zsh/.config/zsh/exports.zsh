@@ -12,6 +12,7 @@ export PATH=$HOME/.local/share/go/bin:$PATH
 export PATH=$HOME/.local/share/fnm:$PATH
 export PATH=$HOME/.local/share/pnpm:$PATH
 export PATH=$HOME/.local/share/neovim/bin:$PATH
+export PATH=$HOME/.deno/bin:$PATH
 export PATH=/opt/homebrew/bin:$PATH
 export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :500 {}'"
 
