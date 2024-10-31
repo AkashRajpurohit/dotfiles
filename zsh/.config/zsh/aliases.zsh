@@ -148,3 +148,8 @@ if command_exists nvim; then
   alias vi='nvim'
 fi
 
+# Replace vscode with vscodium if it is installed
+if command_exists codium; then
+  alias code=codium
+fi
+
