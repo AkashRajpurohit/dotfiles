@@ -71,6 +71,7 @@ alias plz=sudorun
 # Docker related
 alias dcu='docker compose pull; docker compose down --remove-orphans; docker compose rm; docker compose up -d'
 alias dps='docker ps --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"'
+alias dcps='docker compose ps --format "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"'
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   # gpg encryption
