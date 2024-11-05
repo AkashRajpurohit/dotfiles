@@ -79,6 +79,7 @@ alias gcm='git checkout $(git_main_branch)'
 alias gcd='git checkout $(git_develop_branch)'
 alias gcmsg='git commit --message'
 alias gco='git checkout'
+alias gcoo="git ch"
 alias gcor='git checkout --recurse-submodules'
 alias gcount='git shortlog --summary --numbered'
 alias gcp='git cherry-pick'
