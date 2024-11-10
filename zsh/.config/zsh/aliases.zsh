@@ -154,3 +154,7 @@ if command_exists codium; then
   alias code=codium
 fi
 
+# if smart_commit.sh exists and tgpt is installed, add alias for it
+if [[ -f "$HOME/.local/bin/smart_commit.sh" && -x "$(command -v tgpt)" ]]; then
+  alias sc="$HOME/.local/bin/smart_commit.sh"
+fi
