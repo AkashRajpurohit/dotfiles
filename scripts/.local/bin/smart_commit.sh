@@ -14,6 +14,7 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 DIFF=$(git diff --cached)
+LOG=$(git log --pretty=oneline --abbrev-commit -10)
 
 if [ -z "$DIFF" ]; then
   echo "No staged changes to commit."
@@ -55,10 +56,7 @@ The commit type should be one of the following:
 	- Do **not** use a period at the end.
 
 **Examples**:
-	- 'feat(router): 🎉 add route guards'
-	- 'fix(forms): 🐛 handle null form values'
-	- 'docs(changelog): 📝 update changelog for version 1.2.0'
-	- 'feat: ✨ add new email integration'
+	$LOG
 
 The **git diff** for this commit is as follows:
 $DIFF
