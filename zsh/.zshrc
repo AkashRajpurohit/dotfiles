@@ -5,6 +5,9 @@
 # history
 HISTFILE=~/.zsh_history
 
+# custom aliases
+[ -f "$HOME/.zsh_aliases" ] && source "$HOME/.zsh_aliases"
+
 # source
 plug "$HOME/.config/zsh/aliases.zsh"
 plug "$HOME/.config/zsh/exports.zsh"
