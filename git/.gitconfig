@@ -15,7 +15,7 @@
 	a = "!git status --short | peco | awk '{print $2}' | xargs git add"
 	d = diff
 	co = checkout
-	ch = !git checkout $(git reflog show --pretty=format:'%gs ~ %gd' --date=relative | grep 'checkout:' | grep -oE '[^ ]+ ~ .*' | awk -F~ '!seen[$    1]++' | head -n 20 | cut -d '~' -f 1 | fzf)
+	ch = !git checkout $(git reflog show --pretty=format:'%gs ~ %gd' --date=relative | grep 'checkout:' | grep -oE '[^ ]+ ~ .*' | awk -F~ '!seen[$1]++' | head -n 20 | cut -d '~' -f 1 | xargs -I {} bash -c 'git rev-parse --verify {} >/dev/null 2>&1 && echo {}' | fzf)
 	ci = commit
 	ca = commit -a
 	ps = "!git push origin $(git rev-parse --abbrev-ref HEAD)"
