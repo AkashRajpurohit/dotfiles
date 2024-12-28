@@ -79,3 +79,5 @@
 	sort = -committerdate
 [includeIf "gitdir:~/work/"]
   path = ~/work/.gitconfig
+[maintenance]
+	repo = /Users/akash/work/levelsfyi-mono
