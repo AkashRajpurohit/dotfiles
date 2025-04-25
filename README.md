@@ -4,7 +4,7 @@
   Dotfiles
   <br />
   <p align="center">
-  <a href="https://github.com/AkashRajpurohit/dotfiles"><img src="https://visitor-badge.laobi.icu/badge?page_id=akashrajpurohit-dotfiles.visitor-badge" height="20"></a>
+  <img alt="Visitors" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fvc.akashrajpurohit.com%2Fc%2Fakash~gh~dotfiles&query=count&style=flat&logo=github&label=Visitors&color=066da5">
   <a href="https://github.com/AkashRajpurohit/dotfiles/stargazers"><img src="https://img.shields.io/github/stars/AkashRajpurohit/dotfiles" height="20"></a>
   <a href="https://github.com/AkashRajpurohit/dotfiles/network/members"><img src="https://img.shields.io/github/forks/AkashRajpurohit/dotfiles" height="20"></a>
   <a href="https://github.com/AkashRajpurohit/dotfiles/issues?q=is%3Aopen+is%3Aissue"><img src="https://img.shields.io/github/issues/AkashRajpurohit/dotfiles" height="20"></a>
