@@ -15,6 +15,8 @@ export PATH=$PNPM_HOME:$PATH
 export PATH=$HOME/.local/share/neovim/bin:$PATH
 export PATH=$HOME/.deno/bin:$PATH
 export PATH=/opt/homebrew/bin:$PATH
+export PATH=/opt/homebrew/opt/ruby/bin:$PATH
+export PATH=/opt/homebrew/lib/ruby/gems/3.4.0/bin:$PATH
 export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :500 {}'"
 
 eval "$(fnm env --use-on-cd)"
