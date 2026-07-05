@@ -19,5 +19,13 @@ export PATH=/opt/homebrew/opt/ruby/bin:$PATH
 export PATH=/opt/homebrew/lib/ruby/gems/3.4.0/bin:$PATH
 export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :500 {}'"
 
-eval "$(fnm env --use-on-cd)"
+_fnm_lazy() {
+  unset -f fnm node npm npx corepack _fnm_lazy 2>/dev/null
+  eval "$(command fnm env --use-on-cd)"
+}
+for _c in fnm node npm npx corepack; do
+  eval "${_c}() { _fnm_lazy; ${_c} \"\$@\"; }"
+done
+unset _c
+
 eval "$(zoxide init zsh)"
