@@ -27,11 +27,6 @@ if command_exists fzf; then
   alias fzgrep='grep --line-buffered --color=never -r "" * | fzf'
 fi
 
-# confirm before overwriting something
-alias cp='cp -i'
-alias mv='mv -i'
-alias rm='rm -i'
-
 # easier to read disk
 alias df='df -h'     # human-readable sizes
 alias free='free -m' # show sizes in MB
