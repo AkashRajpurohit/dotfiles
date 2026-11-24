@@ -1,0 +1,566 @@
+#!/usr/bin/env python3
+"""ccu — AI plan usage on this machine: Claude (each login), Codex (ChatGPT login).
+
+Finds every Claude login on its own: ~/.claude ("personal") and each ~/.claude-<name> ("<name>"),
+read from the macOS Keychain or, on Linux, <dir>/.credentials.json. Codex is ~/.codex.
+Reads each tool's own local login and asks the same endpoint its app uses. Read-only: never
+refreshes tokens (that would rotate them under the app). Each limit gets a pace line (will the
+current rate run it out before it resets?) — shown only when it needs attention and, once a few windows have passed, a plan-fit
+verdict built from past readings in ~/.cache/ccu/history.jsonl.
+
+  ccu                 everything
+  ccu team codex      some accounts (personal, team, team2, codex)
+  ccu -v              full view: every limit, reset clock times, pace + plan-fit sentences
+  ccu --json          normalized rows + pace
+"""
+import base64, glob, hashlib, json, os, subprocess, sys, time, urllib.error, urllib.request
+from datetime import datetime, timezone
+
+HOME = os.path.expanduser("~")
+MACOS = sys.platform == "darwin"
+
+
+def keychain_service(config_dir):
+    # Claude Code suffixes the Keychain item with sha256(CLAUDE_CONFIG_DIR)[:8] for non-default dirs.
+    if not config_dir:
+        return "Claude Code-credentials"
+    return "Claude Code-credentials-" + hashlib.sha256(config_dir.encode()).hexdigest()[:8]
+
+
+def claude_creds_raw(config_dir):
+    # macOS keeps the login in the Keychain; Linux in <config dir>/.credentials.json.
+    if MACOS:
+        out = subprocess.run(["security", "find-generic-password", "-s", keychain_service(config_dir), "-w"],
+                             capture_output=True, text=True)
+        if out.returncode == 0:
+            return out.stdout
+    try:
+        with open(os.path.join(config_dir or f"{HOME}/.claude", ".credentials.json")) as f:
+            return f.read()
+    except OSError:
+        return None
+
+
+def discover_claude():
+    # label -> CLAUDE_CONFIG_DIR (None = default ~/.claude), only dirs that hold a login
+    found = {}
+    for d in [f"{HOME}/.claude", *sorted(glob.glob(f"{HOME}/.claude-*"))]:
+        if not os.path.isdir(d):
+            continue
+        cfg = None if d == f"{HOME}/.claude" else d
+        if claude_creds_raw(cfg):
+            found["personal" if cfg is None else os.path.basename(d).removeprefix(".claude-")] = cfg
+    return found
+
+
+CLAUDE_ACCOUNTS = discover_claude()
+# label -> CODEX_HOME
+_codex_home = os.environ.get("CODEX_HOME") or f"{HOME}/.codex"
+CODEX_ACCOUNTS = {"codex": _codex_home} if os.path.exists(f"{_codex_home}/auth.json") else {}
+ACCOUNTS = [*CLAUDE_ACCOUNTS, *CODEX_ACCOUNTS]
+
+CLAUDE_USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
+CODEX_USAGE_URL = "https://chatgpt.com/backend-api/wham/usage"
+CACHE_DIR = f"{HOME}/.cache/ccu"  # last good response per account, shown when an endpoint throttles us
+HISTORY = f"{CACHE_DIR}/history.jsonl"
+HISTORY_DAYS = 120
+
+C = sys.stdout.isatty()
+def c(code, s): return f"\033[{code}m{s}\033[0m" if C else s
+DIM, BOLD, GREEN, YELLOW, RED, CYAN = "2", "1", "32", "33", "31", "36"
+
+H, D = 3600, 86400
+
+
+class Problem(Exception):
+    def __init__(self, msg, color=RED, plan=""):
+        super().__init__(msg)
+        self.color, self.plan = color, plan
+
+
+class Throttled(Exception):
+    def __init__(self, retry, plan):
+        super().__init__("rate limited")
+        self.retry, self.plan = retry, plan
+
+
+# ---------- small helpers ----------
+
+def number(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def ago(secs):
+    secs = int(secs)
+    if secs < 60:
+        return f"{secs}s"
+    if secs < H:
+        return f"{secs // 60}m"
+    if secs < 2 * D:
+        return f"{secs // H}h {secs % H // 60:02d}m"
+    return f"{secs // D}d {secs % D // H}h"
+
+
+def parse_time(value):
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value, timezone.utc) if value > 0 else None
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        t = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+
+
+def now():
+    return datetime.now(timezone.utc)
+
+
+def get_json(url, headers):
+    req = urllib.request.Request(url, headers={"User-Agent": "ccu", **headers})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        return json.load(r)
+
+
+def jwt_claims(tok):
+    try:
+        p = tok.split(".")[1]
+        return json.loads(base64.urlsafe_b64decode(p + "=" * (-len(p) % 4)))
+    except (IndexError, ValueError):
+        return {}
+
+
+def cache_path(name): return f"{CACHE_DIR}/{name}.json"
+
+
+def save_cache(name, data):
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(cache_path(name), "w") as f:
+            json.dump({"at": time.time(), "data": data}, f)
+    except OSError:
+        pass
+
+
+def load_cache(name):
+    try:
+        with open(cache_path(name)) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+# A row is one limit: {label, pct, reset (datetime|None), window (secs|None), detail (str)}
+def row(label, pct, reset, window, detail=""):
+    return {"label": label, "pct": number(pct), "reset": parse_time(reset), "window": window, "detail": detail}
+
+
+# ---------- Claude ----------
+
+def claude_creds(config_dir):
+    raw = claude_creds_raw(config_dir)
+    if not raw:
+        return None
+    try:
+        return json.loads(raw).get("claudeAiOauth") or None
+    except json.JSONDecodeError:
+        return None
+
+
+def claude_label(lim):
+    kind = lim.get("kind") or ""
+    if kind == "session" or lim.get("group") == "session":
+        return "5-hour"
+    model = (((lim.get("scope") or {}).get("model")) or {}).get("display_name")
+    if model:
+        return f"Weekly {model}"
+    if lim.get("group") == "weekly" or kind.startswith("weekly"):
+        return "Weekly"
+    return kind.replace("_", " ").capitalize() or "Limit"
+
+
+def claude_rows(data):
+    rows = []
+    for lim in data.get("limits") or []:
+        if isinstance(lim, dict):
+            lbl = claude_label(lim)
+            win = 5 * H if lbl == "5-hour" else 7 * D if lbl.startswith("Weekly") else None
+            rows.append(row(lbl, lim.get("percent"), lim.get("resets_at"), win))
+    if not rows:  # older response shape
+        for key, name, win in (("five_hour", "5-hour", 5 * H), ("seven_day", "Weekly", 7 * D),
+                               ("seven_day_opus", "Weekly Opus", 7 * D),
+                               ("seven_day_sonnet", "Weekly Sonnet", 7 * D)):
+            v = data.get(key)
+            if isinstance(v, dict):
+                rows.append(row(name, v.get("utilization"), v.get("resets_at"), win))
+    extra = data.get("extra_usage") or {}
+    if extra.get("is_enabled") and extra.get("utilization") is not None:
+        rows.append(row("Extra usage", extra["utilization"], None, None))
+    return rows
+
+
+def claude(name):
+    cfg = CLAUDE_ACCOUNTS[name]
+    cr = claude_creds(cfg)
+    if not cr or not cr.get("accessToken"):
+        hint = f"CLAUDE_CONFIG_DIR={cfg} " if cfg else ""
+        raise Problem(f"not logged in — run `{hint}claude` → /login")
+    plan = cr.get("subscriptionType") or "?"
+    if number(cr.get("expiresAt")) / 1000 < time.time():
+        raise Problem("login token expired — start `claude` in that account once to refresh it", YELLOW, plan)
+    try:
+        data = get_json(CLAUDE_USAGE_URL, {"Authorization": f"Bearer {cr['accessToken']}",
+                                           "anthropic-beta": "oauth-2025-04-20"})
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            # Throttles per token (Claude Code itself polls it); caller shows the last good read.
+            raise Throttled(e.headers.get("Retry-After"), plan)
+        raise Problem("token rejected — start `claude` in that account once" if e.code == 401
+                      else f"HTTP {e.code}", plan=plan)
+    return plan, data, claude_rows
+
+
+# ---------- Codex (ChatGPT login) ----------
+
+def codex_rows(data):
+    rows, rl = [], data.get("rate_limit") or {}
+    for key, fallback in (("primary_window", "5-hour"), ("secondary_window", "Weekly")):
+        w = rl.get(key)
+        if not isinstance(w, dict):
+            continue
+        win = int(number(w.get("limit_window_seconds"))) or None
+        lbl = "5-hour" if win == 5 * H else "Weekly" if win == 7 * D else (f"{ago(win)} window" if win else fallback)
+        rows.append(row(lbl, w.get("used_percent"), w.get("reset_at"), win))
+    for extra in data.get("additional_rate_limits") or []:
+        if isinstance(extra, dict):
+            for w in (extra.get("rate_limit") or {}).values():
+                if isinstance(w, dict):
+                    win = int(number(w.get("limit_window_seconds"))) or None
+                    rows.append(row(extra.get("limit_name") or extra.get("metered_feature") or "Other",
+                                    w.get("used_percent"), w.get("reset_at"), win))
+    resets = (data.get("rate_limit_reset_credits") or {}).get("available_count")
+    if rows and resets:
+        rows[0]["detail"] = f"{resets} manual reset{'s' if resets != 1 else ''} left"
+    return rows
+
+
+def codex(name):
+    path = f"{CODEX_ACCOUNTS[name]}/auth.json"
+    try:
+        with open(path) as f:
+            auth = json.load(f)
+    except (OSError, ValueError):
+        raise Problem(f"no login at {path} — run `codex login`")
+    tok = auth.get("tokens") or {}
+    if not tok.get("access_token"):
+        raise Problem("not logged in with ChatGPT (API-key mode has no plan limits)", YELLOW)
+    plan = ((jwt_claims(tok.get("id_token", "")).get("https://api.openai.com/auth") or {})
+            .get("chatgpt_plan_type")) or "?"
+    try:
+        data = get_json(CODEX_USAGE_URL, {"Authorization": f"Bearer {tok['access_token']}",
+                                          "ChatGPT-Account-Id": tok.get("account_id", "")})
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            raise Throttled(e.headers.get("Retry-After"), plan)
+        raise Problem("token rejected — run `codex` once so it refreshes its login" if e.code in (401, 403)
+                      else f"HTTP {e.code}", plan=plan)
+    return data.get('plan_type') or plan, data, codex_rows
+
+
+PROVIDERS = {**{n: claude for n in CLAUDE_ACCOUNTS}, **{n: codex for n in CODEX_ACCOUNTS}}
+ROWS_FOR = {claude: claude_rows, codex: codex_rows}
+
+
+# ---------- pace: will the current rate last until the reset? ----------
+
+def pace(r):
+    """(color, text) or None. Linear projection from the start of the window to now."""
+    pct, reset, win = r["pct"], r["reset"], r["window"]
+    if not reset or not win:
+        return None
+    left = (reset - now()).total_seconds()
+    if left <= 0:
+        return None
+    elapsed = win - left
+    if pct >= 100:
+        return RED, f"limit hit — locked for {ago(left)}"
+    if pct <= 0:
+        return (DIM, "unused so far") if elapsed > 0.25 * win else None
+    if elapsed < max(0.1 * win, 15 * 60):
+        return DIM, "too early to project"
+    projected = pct * win / elapsed
+    rate = pct / elapsed
+    runout = (100 - pct) / rate
+    if runout < left:
+        return RED, f"over pace — runs out in {ago(runout)}, {ago(left - runout)} before reset"
+    if projected >= 85:
+        return YELLOW, f"tight — on track for ~{projected:.0f}% by reset"
+    if projected < 50:
+        return CYAN, f"under pace — on track for ~{projected:.0f}%, {100 - projected:.0f}% would go unused"
+    return GREEN, f"on pace — on track for ~{projected:.0f}% by reset"
+
+
+# ---------- history: past windows → plan fit ----------
+
+def history_key(name, r):
+    return f"{name}:{r['label']}"
+
+
+def record(name, rows):
+    """Append one reading per long window (skip 5-hour noise); keeps the file small by deduping."""
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(HISTORY, "a") as f:
+            for r in rows:
+                if r["reset"] and r["window"] and r["window"] >= D:
+                    f.write(json.dumps({"at": int(time.time()), "k": history_key(name, r), "pct": r["pct"],
+                                        "reset": int(r["reset"].timestamp()), "win": r["window"]}) + "\n")
+    except OSError:
+        pass
+
+
+def load_history():
+    try:
+        with open(HISTORY) as f:
+            lines = [json.loads(l) for l in f if l.strip()]
+    except (OSError, ValueError):
+        return []
+    cutoff = time.time() - HISTORY_DAYS * D
+    keep = [l for l in lines if l.get("at", 0) >= cutoff]
+    if len(keep) < len(lines) or len(keep) > 5000:
+        # prune old lines and collapse to the max reading per (key, window)
+        best = {}
+        for l in keep:
+            k = (l["k"], round(l["reset"] / H))
+            if k not in best or l["pct"] >= best[k]["pct"]:
+                best[k] = l
+        keep = sorted(best.values(), key=lambda l: l["at"])
+        try:
+            with open(HISTORY, "w") as f:
+                f.writelines(json.dumps(l) + "\n" for l in keep)
+        except OSError:
+            pass
+    return keep
+
+
+def plan_fit(history, name, r):
+    """Peak reading of each finished window for this limit, newest first, → verdict."""
+    if not r["window"] or r["window"] < D:
+        return None
+    key, t = history_key(name, r), time.time()
+    peaks = {}
+    for l in history:
+        if l["k"] == key and l["reset"] <= t:
+            w = round(l["reset"] / H)  # resets_at jitters by a second or two between reads
+            peaks[w] = max(peaks.get(w, 0), l["pct"])
+    finished = [peaks[w] for w in sorted(peaks, reverse=True)][:6]
+    if len(finished) < 2:
+        return None
+    hit = sum(p >= 100 for p in finished)
+    avg = sum(finished) / len(finished)
+    if hit * 2 >= len(finished):
+        color, verdict = RED, "plan is too small — you hit the cap most windows"
+    elif avg >= 80 or hit:
+        color, verdict = YELLOW, "plan is tight — fits, with little headroom"
+    elif avg < 40:
+        color, verdict = CYAN, "plan is oversized — a lower tier would likely do"
+    else:
+        color, verdict = GREEN, "plan fits"
+    unit = "months" if r["window"] >= 28 * D else "weeks" if r["window"] >= 7 * D else "windows"
+    shown = " ".join(f"{p:.0f}%" for p in finished)
+    return color, f"past {unit} ≥{shown} → {verdict}"
+
+
+# ---------- output ----------
+
+def shown_name(name):
+    # Two logins share the team plan, so Claude rows print their account name (personal, team, team2).
+    return name
+
+
+def resets(r):
+    t = r["reset"]
+    if t is None:
+        return c(DIM, "window not started") if r["window"] else ""
+    secs = int((t - now()).total_seconds())
+    if secs <= 0:
+        return "resets now"
+    d, rem = divmod(secs, D)
+    h, m = divmod(rem // 60, 60)
+    rel = f"{d}d {h}h" if d else (f"{h}h {m:02d}m" if h else f"{m}m")
+    return f"resets in {rel}  {c(DIM, t.astimezone().strftime('(%a %d %b %H:%M)' if d >= 6 else '(%a %H:%M)'))}"
+
+
+def bar(pct, width=20):
+    filled = round(width * max(0, min(pct, 100)) / 100)
+    color = RED if pct >= 90 else YELLOW if pct >= 70 else GREEN
+    return c(color, "█" * filled) + c(DIM, "░" * (width - filled))
+
+
+def render(name, plan, rows, history, note=""):
+    print(f"{c(BOLD, shown_name(name))} {c(DIM, plan)}{'  ' + note if note else ''}")
+    if not rows:
+        print(f"  {c(DIM, 'no limits reported')}")
+    for r in rows:
+        tail = resets(r)
+        if r["detail"]:
+            tail = f"{tail}  {c(DIM, r['detail'])}" if tail else c(DIM, r["detail"])
+        print(f"  {r['label']:<14} {bar(r['pct'])} {r['pct']:>3.0f}%   {tail}")
+        for line in (pace(r), plan_fit(history, name, r)):
+            if line:
+                print(f"  {'':<14} {c(line[0], '↳ ' + line[1])}")
+    print()
+
+
+def problem(name, plan, msg, color=RED):
+    if VERBOSE:
+        print(f"{c(BOLD, shown_name(name))} {c(DIM, plan)}  {c(color, msg)}\n")
+    else:
+        separator()
+        print(f"{c(BOLD, f'{shown_name(name):<9}')}{c(DIM, f'{plan:<8}')} {c(color, msg)}")
+
+
+# ---------- compact view (default): one line per limit, notes only when they need attention ----------
+
+SHORT = {"5-hour": "5h", "Weekly": "week", "Monthly": "month", "On-demand": "extra", "Extra usage": "extra"}
+VERBOSE = False
+_groups = 0
+
+
+def separator():
+    """A dim rule between accounts in the compact view."""
+    global _groups
+    if _groups:
+        print(c(DIM, "─" * 62))
+    _groups += 1
+
+
+def short_reset(r):
+    t = r["reset"]
+    if t is None:
+        return "—" if r["window"] else ""
+    secs = int((t - now()).total_seconds())
+    if secs <= 0:
+        return "now"
+    d, rem = divmod(secs, D)
+    h, m = divmod(rem // 60, 60)
+    return f"{d}d {h}h" if d else (f"{h}h {m:02d}m" if h else f"{m}m")
+
+
+def brief(r):
+    """A short note only when a limit needs attention; quiet otherwise."""
+    pct, reset, win = r["pct"], r["reset"], r["window"]
+    if not reset or not win:
+        return None
+    left = (reset - now()).total_seconds()
+    elapsed = win - left
+    if left <= 0:
+        return None
+    if pct >= 100:
+        return RED, "locked"
+    if pct <= 0 or elapsed < max(0.1 * win, 15 * 60):
+        return None
+    projected, runout = pct * win / elapsed, (100 - pct) * elapsed / pct
+    if runout < left:
+        return RED, f"out in {ago(runout)}"
+    if projected >= 85:
+        return YELLOW, f"tight, ~{projected:.0f}% at reset"
+    if win >= D and elapsed >= 0.5 * win and projected < 50:
+        return CYAN, f"light, ~{projected:.0f}% at reset"
+    return None
+
+
+def fit_word(history, name, r):
+    f = plan_fit(history, name, r)
+    if not f:
+        return None
+    return f[0], "plan " + f[1].split("plan is ")[-1].split(" —")[0] if "plan is" in f[1] else "plan fits"
+
+
+def render_compact(name, plan, rows, history, note=""):
+    shown = [r for r in rows if r["pct"] > 0 or r["label"] in SHORT]  # hide idle per-model rows
+    if not shown:
+        problem(name, plan, "no limits reported", DIM)
+        return
+    separator()
+    for i, r in enumerate(shown):
+        head = f"{c(BOLD, f'{shown_name(name):<9}')}{c(DIM, f'{plan:<8}')}" if i == 0 else " " * 17
+        lbl = SHORT.get(r["label"], r["label"].replace("Weekly ", "").lower()[:6])
+        notes = [x for x in (brief(r), fit_word(history, name, r)) if x]
+        tail = "  ".join(c(col, txt) for col, txt in notes)
+        if r["detail"]:
+            tail = f"{tail}  {c(DIM, r['detail'])}" if tail else c(DIM, r["detail"])
+        if i == 0 and note:
+            tail = f"{tail}  {note}" if tail else note
+        print(f"{head} {lbl:<6}{bar(r['pct'], 12)} {r['pct']:>4.0f}%  {c(DIM, f'{short_reset(r):<8}')} {tail}".rstrip())
+
+
+def as_json_rows(rows):
+    out = []
+    for r in rows:
+        p = pace(r)
+        out.append({**r, "reset": r["reset"].isoformat() if r["reset"] else None,
+                    "pace": p[1] if p else None})
+    return out
+
+
+def main():
+    if "-h" in sys.argv or "--help" in sys.argv:
+        print(__doc__.strip())
+        return 0
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    unknown = [a for a in args if a not in PROVIDERS]
+    if unknown:
+        print(f"unknown account: {', '.join(unknown)} (have: {', '.join(ACCOUNTS)})", file=sys.stderr)
+        return 2
+    global VERBOSE
+    VERBOSE = "-v" in sys.argv or "--verbose" in sys.argv
+    show = render if VERBOSE else render_compact
+    as_json = "--json" in sys.argv
+    history = load_history()
+    out, failed = {}, False
+    for name, provider in PROVIDERS.items():
+        if args and name not in args:
+            continue
+        try:
+            plan, data, to_rows = provider(name)
+        except Throttled as e:
+            failed = True
+            wait = f", retry in {ago(int(e.retry))}" if e.retry and e.retry.isdigit() else ""
+            cached = load_cache(name)
+            if cached and isinstance(cached.get("data"), dict):
+                rows = ROWS_FOR[provider](cached["data"])
+                out[name] = as_json_rows(rows)
+                if not as_json:
+                    note = c(YELLOW, f"rate limited{wait} — cached {ago(time.time() - cached['at'])} ago")
+                    show(name, e.plan, rows, history, note)
+            elif not as_json:
+                problem(name, e.plan, f"rate limited{wait} (no cached reading yet)", YELLOW)
+            continue
+        except Problem as e:
+            failed = True
+            if not as_json:
+                problem(name, e.plan, str(e), e.color)
+            continue
+        except Exception as e:
+            failed = True
+            if not as_json:
+                problem(name, "", f"request failed: {e}")
+            continue
+        save_cache(name, data)
+        rows = to_rows(data)
+        record(name, rows)
+        out[name] = as_json_rows(rows)
+        if not as_json:
+            show(name, plan, rows, history)
+    if as_json:
+        print(json.dumps(out, indent=2))
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -19,6 +19,6 @@ export PATH=/opt/homebrew/opt/ruby/bin:$PATH
 export PATH=/opt/homebrew/lib/ruby/gems/3.4.0/bin:$PATH
 export FZF_CTRL_T_OPTS="--preview 'bat --color=always --line-range :500 {}'"
 
-eval "$(fnm env --use-on-cd)"
+command -v fnm >/dev/null && eval "$(fnm env --use-on-cd)"
 
-eval "$(zoxide init zsh)"
+command -v zoxide >/dev/null && eval "$(zoxide init zsh)"
