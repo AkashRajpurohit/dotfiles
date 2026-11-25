@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""claude-plugins — install the Claude Code plugins listed in ~/dotfiles/claude/plugins.json into
+every Claude seat on this machine, and say which language servers are missing.
+
+A seat is ~/.claude or a ~/.claude-<name> directory with a settings.json; seats whose settings and
+plugins are links to another seat's (the Mac's team seats share ~/.claude's) are done once. It only
+adds and enables what the list names, at user scope, and never removes anything.
+
+  claude-plugins           install and enable what is missing
+  claude-plugins --check   report only; exits 1 when something is missing
+"""
+import glob, json, os, platform, shutil, subprocess, sys
+
+HOME = os.path.expanduser("~")
+LIST = os.path.join(os.environ.get("DOTFILES", f"{HOME}/dotfiles"), "claude", "plugins.json")
+CHECK = "--check" in sys.argv[1:]
+
+
+def seats():
+    found, seen = [], set()
+    for d in [f"{HOME}/.claude", *sorted(glob.glob(f"{HOME}/.claude-*"))]:
+        settings = os.path.join(d, "settings.json")
+        if not os.path.isdir(d) or not os.path.exists(settings):
+            continue
+        key = (os.path.realpath(settings), os.path.realpath(os.path.join(d, "plugins")))
+        if key in seen:
+            continue
+        seen.add(key)
+        found.append(d)
+    return found
+
+
+def claude(seat, *args):
+    env = dict(os.environ)
+    env.pop("CLAUDE_CONFIG_DIR", None)
+    if seat != f"{HOME}/.claude":
+        env["CLAUDE_CONFIG_DIR"] = seat
+    return subprocess.run(["claude", "plugin", *args], env=env, capture_output=True, text=True, timeout=300)
+
+
+def as_json(result):
+    try:
+        return json.loads(result.stdout or "[]")
+    except ValueError:
+        return []
+
+
+def main():
+    want = json.load(open(LIST))
+    missing = 0
+    for seat in seats():
+        label = seat.replace(HOME, "~")
+        have_markets = {m.get("name") for m in as_json(claude(seat, "marketplace", "list", "--json"))}
+        for name, repo in want.get("marketplaces", {}).items():
+            if name not in have_markets:
+                missing += 1
+                if CHECK:
+                    print(f"{label}: marketplace {name} missing")
+                else:
+                    r = claude(seat, "marketplace", "add", repo, "--scope", "user")
+                    print(f"{label}: added marketplace {name}" if r.returncode == 0 else f"{label}: adding {name} failed: {r.stderr.strip()[-200:]}")
+        user = {p["id"]: p for p in as_json(claude(seat, "list", "--json")) if p.get("scope") == "user"}
+        for pid in want.get("plugins", []):
+            p = user.get(pid)
+            if p and p.get("enabled"):
+                continue
+            missing += 1
+            action = "enable" if p else "install"
+            if CHECK:
+                print(f"{label}: {pid} needs {action}")
+                continue
+            r = claude(seat, action, pid, "--scope", "user")
+            print(f"{label}: {action}ed {pid}" if r.returncode == 0 else f"{label}: {action} {pid} failed: {(r.stderr or r.stdout).strip()[-200:]}")
+    os_key = "macos" if platform.system() == "Darwin" else "linux"
+    for pid, ls in want.get("language_servers", {}).items():
+        if pid in want.get("plugins", []) and not shutil.which(ls["binary"]):
+            print(f"language server missing for {pid}: {ls['binary']} (install: {ls[os_key]})")
+    if CHECK and missing:
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

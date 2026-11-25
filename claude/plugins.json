@@ -1,0 +1,30 @@
+{
+  "marketplaces": {
+    "claude-plugins-official": "anthropics/claude-plugins-official"
+  },
+  "plugins": [
+    "typescript-lsp@claude-plugins-official",
+    "pyright-lsp@claude-plugins-official",
+    "rust-analyzer-lsp@claude-plugins-official",
+    "context7@claude-plugins-official",
+    "claude-md-management@claude-plugins-official",
+    "session-report@claude-plugins-official"
+  ],
+  "language_servers": {
+    "typescript-lsp@claude-plugins-official": {
+      "binary": "typescript-language-server",
+      "macos": "brew install typescript-language-server",
+      "linux": "npm install -g typescript-language-server typescript"
+    },
+    "pyright-lsp@claude-plugins-official": {
+      "binary": "pyright-langserver",
+      "macos": "brew install pyright",
+      "linux": "npm install -g pyright"
+    },
+    "rust-analyzer-lsp@claude-plugins-official": {
+      "binary": "rust-analyzer",
+      "macos": "brew install rust-analyzer",
+      "linux": "rustup component add rust-analyzer"
+    }
+  }
+}
