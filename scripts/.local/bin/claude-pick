@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""claude-pick — which Claude seat `claude` should use.
+
+Prints the CLAUDE_CONFIG_DIR to use on stdout and a one-line reason on stderr. The first seat is
+the main one; the second is Sentinel's own seat, which you borrow only when the main seat is tight
+and the second still has room above the share kept for Sentinel. The seats are the two directories
+in CLAUDE_PICK_SEATS (default: ~/.claude-team ~/.claude-team2, the Mac's), labelled the way ccu
+labels them (~/.claude-<name> is <name>). Reads live usage through `ccu --json`
+(which falls back to its last good reading when the usage endpoint throttles) and defaults to the
+main seat when anything about the reading fails.
+"""
+import json, os, subprocess, sys
+
+HOME = os.path.expanduser("~")
+DIRS = (os.environ.get("CLAUDE_PICK_SEATS") or f"{HOME}/.claude-team {HOME}/.claude-team2").split()[:2]
+SEATS = {os.path.basename(d.rstrip("/")).removeprefix(".claude-"): d for d in DIRS}
+MAIN, SPARE = (list(SEATS) + [None])[:2]
+
+LOCKED_5H, LOCKED_WEEK = 95, 98      # a seat at these is effectively out
+TIGHT_5H = 85                        # the main seat is tight from here, or when its week is over pace
+BORROW_5H, BORROW_WEEK = 80, 70      # team2 is lent only below these; the rest is Sentinel's
+
+
+def usage():
+    try:
+        out = subprocess.run(["ccu", "--json", *SEATS], capture_output=True, text=True, timeout=8)
+        data = json.loads(out.stdout or "{}")
+    except (subprocess.TimeoutExpired, OSError, ValueError):
+        return {}
+    seats = {}
+    for name, rows in data.items():
+        by = {r["label"]: r for r in rows}
+        five, week = by.get("5-hour") or {}, by.get("Weekly") or {}
+        seats[name] = {
+            "5h": five.get("pct", 0.0),
+            "week": week.get("pct", 0.0),
+            "over_pace": (week.get("pace") or "").startswith(("over pace", "limit hit")),
+        }
+    return seats
+
+
+def show(name, s):
+    return f"{name} 5h {s['5h']:.0f}% week {s['week']:.0f}%{' over pace' if s['over_pace'] else ''}"
+
+
+def pick():
+    seats = usage()
+    main, spare = seats.get(MAIN), seats.get(SPARE)
+    if not main:
+        return MAIN, f"no usage reading for {MAIN}; using it"
+    locked = main["5h"] >= LOCKED_5H or main["week"] >= LOCKED_WEEK
+    tight = locked or main["5h"] >= TIGHT_5H or main["over_pace"]
+    if not tight:
+        return MAIN, show(MAIN, main)
+    if not spare:
+        return MAIN, f"{show(MAIN, main)}; {SPARE or 'no second seat'} has no usage reading (log in to it once)"
+    spare_out = spare["5h"] >= LOCKED_5H or spare["week"] >= LOCKED_WEEK
+    roomy = spare["5h"] < BORROW_5H and spare["week"] < BORROW_WEEK
+    if roomy or (locked and not spare_out):
+        note = "" if roomy else " (eating into Sentinel's share)"
+        return SPARE, f"{show(MAIN, main)} → {show(SPARE, spare)}{note}"
+    why = "is out too" if spare_out else "is kept for Sentinel"
+    return MAIN, f"{show(MAIN, main)}; {show(SPARE, spare)} {why}"
+
+
+if __name__ == "__main__":
+    name, reason = pick()
+    print(f"claude → {name}: {reason}", file=sys.stderr)
+    print(SEATS[name])
