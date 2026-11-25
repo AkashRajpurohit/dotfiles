@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# Switch the Apify CLI between saved accounts.
+#
+# The CLI keeps exactly one token in ~/.apify/auth.json and `apify login` overwrites it, so working
+# across two organizations means re-logging in every time. This keeps a copy of each account's
+# auth.json under ~/.apify/accounts/ and swaps the live one.
+#
+#   apify-switch              list saved accounts, marking the active one
+#   apify-switch hydrafetch   switch to that account
+#   apify-switch datahyena    switch to that account
+#   apify-switch --save NAME  save the CURRENT login under NAME
+#   apify-switch --set-token NAME  prompt for a token, check Apify says it is NAME's, save it
+set -euo pipefail
+
+DIR="$HOME/.apify/accounts"
+LIVE="$HOME/.apify/auth.json"
+mkdir -p "$DIR"
+
+# Compare the TOKEN, never the stored `username` field. They can disagree: auth.json was once left
+# holding a hydrafetch token under username "datahyena", so the listing named the wrong active
+# account. Reporting the wrong account is the exact mistake this tool exists to prevent, and the
+# token is the only thing that actually decides where a push lands.
+current_token() {
+  local t=""
+  [ -f "$LIVE" ] && t="$(python3 -c "import json;print(json.load(open('$LIVE')).get('token',''))" 2>/dev/null || true)"
+  # The CLI keeps the token in the macOS Keychain when auth.json has none; Linux has no fallback.
+  [ -z "$t" ] && command -v security >/dev/null && t="$(security find-generic-password -s com.apify.cli -a token -w 2>/dev/null || true)"
+  echo "$t"
+}
+
+token_of() {
+  python3 -c "import json;print(json.load(open('$1')).get('token',''))" 2>/dev/null || echo ""
+}
+
+current() {
+  now_token="$(current_token)"
+  for f in "$DIR"/*.json; do
+    [ -e "$f" ] || continue
+    if [ -n "$now_token" ] && [ "$(token_of "$f")" = "$now_token" ]; then
+      basename "$f" .json
+      return
+    fi
+  done
+  echo "unsaved"
+}
+
+if [ "${1:-}" = "--set-token" ]; then
+  name="${2:?usage: apify-switch --set-token NAME}"
+  read -r -s -p "New Apify token for '$name' (hidden): " token
+  echo
+  [ -n "$token" ] || { echo "no token given" >&2; exit 1; }
+  printf '%s' "$token" | python3 -c '
+import json, os, sys, urllib.request
+name, path = sys.argv[1], sys.argv[2]
+token = sys.stdin.read().strip()
+req = urllib.request.Request("https://api.apify.com/v2/users/me", headers={"Authorization": "Bearer " + token})
+try:
+    me = json.load(urllib.request.urlopen(req, timeout=20))["data"]
+except Exception as e:
+    sys.exit(f"Apify refused the token: {e}")
+owner = me.get("username")
+if owner != name:
+    sys.exit(f"That token belongs to {owner!r}, not {name!r}. Nothing written.")
+data = json.load(open(path)) if os.path.exists(path) else {}
+data.update({"username": name, "token": token})
+data.pop("secretsBackend", None)
+tmp = path + ".tmp"
+with open(tmp, "w") as f:
+    json.dump(data, f, indent=2)
+os.chmod(tmp, 0o600)
+os.replace(tmp, path)
+print(f"saved a verified token for {name}")
+' "$name" "$DIR/$name.json"
+  unset token
+  echo "make it live with: apify-switch $name"
+  exit 0
+fi
+
+if [ "${1:-}" = "--save" ]; then
+  name="${2:?usage: apify-switch --save NAME}"
+  cp "$LIVE" "$DIR/$name.json"
+  echo "saved current login as '$name'"
+  exit 0
+fi
+
+if [ $# -eq 0 ]; then
+  now_token="$(current_token)"
+  echo "saved accounts (active marked *):"
+  for f in "$DIR"/*.json; do
+    [ -e "$f" ] || { echo "  none yet, run: apify-switch --save NAME"; exit 0; }
+    n="$(basename "$f" .json)"
+    u="$(python3 -c "import json;print(json.load(open('$f')).get('username',''))")"
+    if [ -n "$now_token" ] && [ "$(token_of "$f")" = "$now_token" ]; then
+      echo "  * $n ($u)"
+    else
+      echo "    $n ($u)"
+    fi
+  done
+  [ "$(current)" = "unsaved" ] && echo "  (the live token matches no saved account)"
+  exit 0
+fi
+
+target="$DIR/$1.json"
+if [ ! -f "$target" ]; then
+  echo "No saved account '$1'. Known: $(ls "$DIR" 2>/dev/null | sed 's/\.json$//' | tr '\n' ' ')" >&2
+  exit 1
+fi
+cp "$target" "$LIVE"
+echo "switched to $(current)"
