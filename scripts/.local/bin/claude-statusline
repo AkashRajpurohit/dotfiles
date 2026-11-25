@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""claude-statusline — Claude Code's status line, the same on every machine.
+
+  akash@yuji team-1 · datahyena (main*)
+  Opus 5.5 high · ctx 7% · 5h 21% 2h10m · week 48% ▲ 3d4h · $0.36
+
+Line one is where you are: user@host, the Claude seat (CLAUDE_CONFIG_DIR), the folder and its git
+branch (* when tracked files changed). Line two is what you are spending: model and effort, the
+context window, the plan's 5-hour and weekly use with the time until each resets, and the session's
+list-price cost. Plan use turns yellow at 60% and red at 85%; ▲ means it is ahead of an even pace
+through its window. Everything comes from the JSON Claude Code passes on stdin, plus one quick git
+call, so it costs nothing to refresh. On a narrow terminal (a phone) the extras drop off first.
+"""
+import json, os, socket, subprocess, sys, time
+
+RESET, DIM, BOLD = "\033[0m", "\033[2m", "\033[1m"
+RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN = (f"\033[{c}m" for c in (31, 32, 33, 34, 35, 36))
+WINDOWS = {"five_hour": ("5h", 5 * 3600), "seven_day": ("week", 7 * 86400)}
+
+
+def color_for(pct):
+    return RED if pct >= 85 else YELLOW if pct >= 60 else GREEN
+
+
+def until(epoch):
+    left = max(0, int(epoch - time.time()))
+    d, h, m = left // 86400, left % 86400 // 3600, left % 3600 // 60
+    return f"{d}d{h}h" if d else f"{h}h{m:02d}m" if h else f"{m}m"
+
+
+def git_branch(cwd):
+    try:
+        out = subprocess.run(["git", "--no-optional-locks", "-C", cwd, "status", "--porcelain=v2", "--branch", "-uno"],
+                             capture_output=True, text=True, timeout=1)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    if out.returncode != 0:
+        return ""
+    branch, dirty = "", False
+    for line in out.stdout.splitlines():
+        if line.startswith("# branch.head "):
+            branch = line.split(" ", 2)[2]
+        elif line.startswith("# branch.oid ") and not branch:
+            branch = line.split(" ", 2)[2][:7]
+        elif not line.startswith("#"):
+            dirty = True
+    if branch == "(detached)":
+        oid = next((l.split(" ", 2)[2][:7] for l in out.stdout.splitlines() if l.startswith("# branch.oid ")), "")
+        branch = f"@{oid}"
+    return f"{branch}{'*' if dirty else ''}" if branch else ""
+
+
+def visible(parts):
+    return len(" · ".join(p[1] for p in parts))
+
+
+def fit(parts, width):
+    # parts: (priority, plain text, colored text); drop the lowest priority until the line fits
+    parts = list(parts)
+    while len(parts) > 1 and visible(parts) > width:
+        parts.remove(min(parts, key=lambda p: p[0]))
+    return f" {DIM}·{RESET} ".join(p[2] for p in parts)
+
+
+def main():
+    try:
+        d = json.load(sys.stdin)
+    except ValueError:
+        d = {}
+    width = int(os.environ.get("COLUMNS") or 120) - 4
+    cwd = d.get("workspace", {}).get("current_dir") or d.get("cwd") or os.getcwd()
+    home = os.path.expanduser("~")
+
+    seat = os.path.basename(os.environ.get("CLAUDE_CONFIG_DIR", "").rstrip("/")).removeprefix(".claude-") or "personal"
+    where = os.path.basename(cwd) if cwd != home else "~"
+    branch = git_branch(cwd)
+    who = f"{os.environ.get('USER', '')}@{socket.gethostname().split('.')[0]}"
+    line1 = [
+        (2, who, f"{DIM}{who}{RESET}"),
+        (4, seat, f"{MAGENTA}{seat}{RESET}"),
+        (5, where + (f" ({branch})" if branch else ""), f"{BOLD}{BLUE}{where}{RESET}" + (f" {CYAN}({branch}){RESET}" if branch else "")),
+    ]
+    if d.get("worktree") or d.get("workspace", {}).get("git_worktree"):
+        line1.append((3, "worktree", f"{YELLOW}worktree{RESET}"))
+
+    model = (d.get("model") or {}).get("display_name", "")
+    effort = (d.get("effort") or {}).get("level", "")
+    line2 = [(5, f"{model} {effort}".strip(), f"{model} {DIM}{effort}{RESET}".strip())] if model else []
+    ctx = (d.get("context_window") or {}).get("used_percentage")
+    if ctx is not None:
+        c = color_for(ctx * 1.2)  # context fills up before it hurts: warn earlier
+        line2.append((4, f"ctx {ctx:.0f}%", f"ctx {c}{ctx:.0f}%{RESET}"))
+    for key, (label, span) in WINDOWS.items():
+        w = (d.get("rate_limits") or {}).get(key)
+        if not w or w.get("used_percentage") is None:
+            continue
+        pct, resets = w["used_percentage"], w.get("resets_at") or 0
+        elapsed = 1 - max(0, resets - time.time()) / span if resets else 0
+        ahead = resets and pct > elapsed * 100 + 10
+        mark = " ▲" if ahead else ""
+        left = f" {until(resets)}" if resets else ""
+        line2.append((3 if key == "five_hour" else 2, f"{label} {pct:.0f}%{mark}{left}",
+                      f"{label} {color_for(pct)}{pct:.0f}%{RESET}{RED + mark + RESET if mark else ''}{DIM}{left}{RESET}"))
+    cost = (d.get("cost") or {}).get("total_cost_usd")
+    if cost:
+        line2.append((1, f"${cost:.2f}", f"{DIM}${cost:.2f}{RESET}"))
+    if (d.get("vim") or {}).get("mode"):
+        mode = d["vim"]["mode"]
+        line2.append((1, mode, f"{DIM}{mode}{RESET}"))
+
+    print(fit(line1, width))
+    if line2:
+        print(fit(line2, width))
+
+
+if __name__ == "__main__":
+    main()

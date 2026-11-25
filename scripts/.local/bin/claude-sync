@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""claude-plugins — install the Claude Code plugins listed in ~/dotfiles/claude/plugins.json into
-every Claude seat on this machine, and say which language servers are missing.
+"""claude-sync — apply ~/dotfiles/claude/config.json to every Claude seat on this machine: set the
+settings it lists (the status line), install and enable its plugins, and say which language servers
+are missing.
 
 A seat is ~/.claude or a ~/.claude-<name> directory with a settings.json; seats whose settings and
-plugins are links to another seat's (the Mac's team seats share ~/.claude's) are done once. It only
-adds and enables what the list names, at user scope, and never removes anything.
+plugins are links to another seat's (the Mac's team seats share ~/.claude's) are done once. Settings
+keys it lists are replaced as a whole; other keys are left alone. Plugins are only added and enabled,
+at user scope, never removed.
 
-  claude-plugins           install and enable what is missing
-  claude-plugins --check   report only; exits 1 when something is missing
+  claude-sync           apply what differs
+  claude-sync --check   report only; exits 1 when something differs
 """
 import glob, json, os, platform, shutil, subprocess, sys
 
 HOME = os.path.expanduser("~")
-LIST = os.path.join(os.environ.get("DOTFILES", f"{HOME}/dotfiles"), "claude", "plugins.json")
+LIST = os.path.join(os.environ.get("DOTFILES", f"{HOME}/dotfiles"), "claude", "config.json")
 CHECK = "--check" in sys.argv[1:]
 
 
@@ -50,6 +52,18 @@ def main():
     missing = 0
     for seat in seats():
         label = seat.replace(HOME, "~")
+        path = os.path.realpath(os.path.join(seat, "settings.json"))
+        settings = json.load(open(path))
+        stale = [k for k, v in want.get("settings", {}).items() if settings.get(k) != v]
+        if stale:
+            missing += 1
+            if CHECK:
+                print(f"{label}: settings differ: {', '.join(stale)}")
+            else:
+                settings.update({k: want["settings"][k] for k in stale})
+                with open(path, "w") as f:
+                    f.write(json.dumps(settings, indent=2, ensure_ascii=False) + "\n")
+                print(f"{label}: set {', '.join(stale)}")
         have_markets = {m.get("name") for m in as_json(claude(seat, "marketplace", "list", "--json"))}
         for name, repo in want.get("marketplaces", {}).items():
             if name not in have_markets:
