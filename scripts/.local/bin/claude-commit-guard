@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+"""claude-commit-guard — Claude Code PreToolUse hook for Bash, installed in every seat by claude-sync.
+
+Refuses a `git commit` whose message carries attribution (Co-Authored-By, Claude-Session, a claude.ai
+session link, "Generated with Claude Code"), that turns signing off, or whose subject breaks the
+`type: :gitmoji: subject` style in a repo whose recent history follows it.
+"""
+import json
+import os
+import re
+import shlex
+import subprocess
+import sys
+
+STYLE = re.compile(r"^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]+\))?!?: :[a-z0-9_+-]+: \S")
+ATTRIBUTION = re.compile(
+    r"^\s*(co-authored-by|claude-session)\s*[:=]|claude\.ai/code/session|generated with \[?claude code", re.I | re.M
+)
+HEREDOC = re.compile(r"<<-?\s*(['\"]?)([A-Za-z_]\w*)\1")
+OPERATORS = {"&&", "||", ";", "|", "&", ";;", "(", ")"}
+GIT_VALUE_OPTIONS = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"}
+
+
+def cut_heredocs(command):
+    bodies, out, lines, i = [], [], command.split("\n"), 0
+    while i < len(lines):
+        out.append(lines[i])
+        markers = [m.group(2) for m in HEREDOC.finditer(lines[i])]
+        i += 1
+        for marker in markers:
+            body = []
+            while i < len(lines) and lines[i].strip() != marker:
+                body.append(lines[i])
+                i += 1
+            i += 1
+            if "commit" in out[-1]:
+                bodies.append("\n".join(body))
+    return "\n".join(out), bodies
+
+
+def commits(command, cwd):
+    text, bodies = cut_heredocs(command)
+    lex = shlex.shlex(text, posix=True, punctuation_chars=True)
+    lex.whitespace_split = True
+    tokens = list(lex)
+    here = iter(bodies)
+    where, i = cwd, 0
+    while i < len(tokens):
+        t = tokens[i]
+        if t == "cd" and i + 1 < len(tokens) and tokens[i + 1] not in OPERATORS:
+            where = os.path.join(where, os.path.expandvars(os.path.expanduser(tokens[i + 1])))
+        if os.path.basename(t) != "git":
+            i += 1
+            continue
+        repo, gitopts, j = where, [], i + 1
+        while j < len(tokens) and tokens[j].startswith("-"):
+            if tokens[j] in GIT_VALUE_OPTIONS and j + 1 < len(tokens):
+                if tokens[j] == "-C":
+                    repo = os.path.join(repo, os.path.expandvars(os.path.expanduser(tokens[j + 1])))
+                gitopts.append(f"{tokens[j]} {tokens[j + 1]}")
+                j += 2
+            else:
+                gitopts.append(tokens[j])
+                j += 1
+        k = j + 1
+        while k < len(tokens) and tokens[k] not in OPERATORS:
+            k += 1
+        if j < len(tokens) and tokens[j] == "commit":
+            yield repo, gitopts, tokens[j + 1 : k], here
+        i = k
+
+
+def message_of(args, repo, here):
+    messages, files, trailers, flags, i = [], [], [], set(), 0
+    while i < len(args):
+        a = args[i]
+        value = args[i + 1] if i + 1 < len(args) else ""
+        if re.fullmatch(r"-[a-ln-zA-Z]+m", a):
+            messages.append(value)
+            i += 2
+            continue
+        for short, long, bucket in (("-m", "--message", messages), ("-F", "--file", files), (None, "--trailer", trailers)):
+            if a == long or (short and a == short):
+                bucket.append(value)
+                i += 1
+                break
+            if a.startswith(long + "="):
+                bucket.append(a[len(long) + 1 :])
+                break
+            if short and a.startswith(short) and len(a) > 2 and not a.startswith("--"):
+                bucket.append(a[2:])
+                break
+        else:
+            flags.add(a.split("=")[0])
+        i += 1
+    text = []
+    for m in messages:
+        if "<<" in m:
+            m = next(here, "")
+        text.append(m)
+    for f in files:
+        if f == "-":
+            text.append(next(here, ""))
+        else:
+            try:
+                text.append(open(os.path.join(repo, os.path.expanduser(f))).read())
+            except OSError:
+                pass
+    return "\n\n".join(text), trailers, flags
+
+
+def repo_uses_style(repo):
+    try:
+        subjects = subprocess.run(
+            ["git", "-C", repo, "log", "-10", "--no-merges", "--format=%s"], capture_output=True, text=True, timeout=10
+        ).stdout.splitlines()
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return len(subjects) >= 3 and sum(bool(STYLE.match(s)) for s in subjects) >= 0.7 * len(subjects)
+
+
+def problems(command, cwd):
+    found = []
+    for repo, gitopts, args, here in commits(command, cwd):
+        message, trailers, flags = message_of(args, repo, here)
+        if ATTRIBUTION.search(message) or any(ATTRIBUTION.search(t) for t in trailers):
+            found.append("no Co-Authored-By, Claude-Session, session link or other attribution in a commit")
+        if "--no-gpg-sign" in flags or any(re.search(r"commit\.gpgsign\s*=\s*(false|no|0|off)", o, re.I) for o in gitopts):
+            found.append("commits are signed: drop --no-gpg-sign or commit.gpgsign=false")
+        subject = next((line.strip() for line in message.splitlines() if line.strip()), "")
+        if subject and not subject.startswith(("fixup!", "squash!", "amend!")) and not STYLE.match(subject) and repo_uses_style(repo):
+            found.append(f"subject must follow this repo's style, `type: :gitmoji: what changed` (e.g. `fix: :bug: ...`), not: {subject[:80]}")
+    return found
+
+
+def main():
+    event = json.load(sys.stdin)
+    command = event.get("tool_input", {}).get("command", "")
+    if "commit" not in command:
+        return
+    try:
+        found = problems(command, event.get("cwd") or os.getcwd())
+    except ValueError:
+        found = ["no attribution in a commit"] if ATTRIBUTION.search(command) and re.search(r"\bgit\b.*\bcommit\b", command, re.S) else []
+    if found:
+        print("Commit refused: " + "; ".join(dict.fromkeys(found)) + ".", file=sys.stderr)
+        sys.exit(2)
+
+
+if __name__ == "__main__":
+    main()

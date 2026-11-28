@@ -12,6 +12,19 @@
       "sessionUrl": false
     }
   },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.local/bin/claude-commit-guard"
+          }
+        ]
+      }
+    ]
+  },
   "marketplaces": {
     "claude-plugins-official": "anthropics/claude-plugins-official"
   },

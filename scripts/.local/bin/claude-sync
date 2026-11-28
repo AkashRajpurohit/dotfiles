@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """claude-sync — apply ~/dotfiles/claude/config.json to every Claude seat on this machine: set the
 settings it lists (the status line, no attribution or session link in commits and pull requests),
-install and enable its plugins, and say which language servers are missing.
+add the hooks it lists (claude-commit-guard), install and enable its plugins, and say which language
+servers are missing.
 
 A seat is ~/.claude or a ~/.claude-<name> directory with a settings.json; seats whose settings and
 plugins are links to another seat's (the Mac's team seats share ~/.claude's) are done once. Settings
-keys it lists are replaced as a whole; other keys are left alone. Plugins are only added and enabled,
-at user scope, never removed.
+keys it lists are replaced as a whole; other keys are left alone. Hooks and plugins are only added (and
+plugins enabled, at user scope), never removed.
 
   claude-sync           apply what differs
   claude-sync --check   report only; exits 1 when something differs
@@ -55,15 +56,20 @@ def main():
         path = os.path.realpath(os.path.join(seat, "settings.json"))
         settings = json.load(open(path))
         stale = [k for k, v in want.get("settings", {}).items() if settings.get(k) != v]
-        if stale:
+        hooks = settings.get("hooks", {})
+        absent = [(e, g) for e, groups in want.get("hooks", {}).items() for g in groups if g not in hooks.get(e, [])]
+        changes = stale + [f"{e} hook {h['command']}" for e, g in absent for h in g["hooks"]]
+        if changes:
             missing += 1
             if CHECK:
-                print(f"{label}: settings differ: {', '.join(stale)}")
+                print(f"{label}: settings differ: {', '.join(changes)}")
             else:
                 settings.update({k: want["settings"][k] for k in stale})
+                for e, g in absent:
+                    settings.setdefault("hooks", {}).setdefault(e, []).append(g)
                 with open(path, "w") as f:
                     f.write(json.dumps(settings, indent=2, ensure_ascii=False) + "\n")
-                print(f"{label}: set {', '.join(stale)}")
+                print(f"{label}: set {', '.join(changes)}")
         have_markets = {m.get("name") for m in as_json(claude(seat, "marketplace", "list", "--json"))}
         for name, repo in want.get("marketplaces", {}).items():
             if name not in have_markets:
