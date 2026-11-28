@@ -5,6 +5,11 @@
       "command": "$HOME/.local/bin/claude-statusline",
       "padding": 0,
       "refreshInterval": 30
+    },
+    "attribution": {
+      "commit": "",
+      "pr": "",
+      "sessionUrl": false
     }
   },
   "marketplaces": {

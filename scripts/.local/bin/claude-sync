@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """claude-sync — apply ~/dotfiles/claude/config.json to every Claude seat on this machine: set the
-settings it lists (the status line), install and enable its plugins, and say which language servers
-are missing.
+settings it lists (the status line, no attribution or session link in commits and pull requests),
+install and enable its plugins, and say which language servers are missing.
 
 A seat is ~/.claude or a ~/.claude-<name> directory with a settings.json; seats whose settings and
 plugins are links to another seat's (the Mac's team seats share ~/.claude's) are done once. Settings
